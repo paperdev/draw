@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title></title>
+		<META http-equiv="Expires" content="-1">
+		<META http-equiv="Pragma" content="no-cache">
+		<META http-equiv="Cache-Control" content="No-Cache">
+		<meta name="viewport" content="initial-scale=1.0, user-scalable=no">
+		<meta name="apple-mobile-web-app-capable" content="yes">
+		<meta name="apple-mobile-web-app-status-bar-style" content="black">
+        <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+        <script type="text/javascript" src="./js/jquery-1.10.2.js"></script>
+        <script type="text/javascript" src="http://127.0.0.1:8888/socket.io/socket.io.js"></script>
+        <script type="text/javascript">
+
+			$(document).ready(function(){
+			
+				// var socket = io.connect('http://192.168.0.5:8888');
+				var socket = io.connect('http://127.0.0.1:8888');
+			
+				socket.on('connect', function(){
+			
+					alert("connected...");
+			
+				});
+				
+				
+				socket.on('mouseInfo', function(data){
+					var rec = data;
+					//var json = JSON.stringify( rec );
+					var obj = JSON.parse(rec);
+					var _x = obj.x;
+					var _y = obj.y;
+					var _dragging = obj.dragging;
+					var _color = obj.color;
+					var _size = obj.size;
+					console.log('recieve message : ' + data);
+					
+					console.log("x:"+_x);
+					console.log("y:"+_y);
+					console.log("dragging:"+_dragging);
+					console.log("color:"+_color);
+					console.log("size:"+_size);
+					
+					sendX.push(_x);
+					sendY.push(_y);
+					sendDrag.push(_dragging);
+					sendColor.push(_color);
+					sendSize.push(_size);
+
+					copy();
+				});
+				
+				//socket.on('disconnect', function(){
+				
+				//	alert('disconnected...');
+				
+				//});
+				
+				
+				
+				
+				var sendX = new Array();
+				var sendY = new Array();
+				var sendDrag = new Array();
+				var sendColor = new Array();
+				var sendSize = new Array();
+				
+
+				var clickX = new Array();
+				var clickY = new Array();
+				var clickDrag = new Array();
+				var clickColor = new Array();
+				var clickSize = new Array();
+
+				var isPainting;
+				var color = "black";
+				var size = 5;
+
+				var c=document.getElementById("paint");
+				var ctx=c.getContext("2d");
+				//ctx.strokeStyle=color;
+				//ctx.lineWidth=size;
+				ctx.lineCap="round";
+
+				var c_copy=document.getElementById("copy");
+				var ctx_copy=c_copy.getContext("2d");
+				//ctx_copy.strokeStyle=color;
+				//ctx_copy.lineWidth=size;
+				ctx_copy.lineCap="round";
+
+				function copy(){
+					for(var i=0; i < sendX.length; i++)
+					{
+						ctx_copy.beginPath();
+						if(sendDrag[i] && i){
+							
+							ctx_copy.moveTo(sendX[i-1], sendY[i-1]);
+						}else{
+							ctx_copy.moveTo(sendX[i]-1, sendY[i]);
+						}
+						ctx_copy.lineTo(sendX[i], sendY[i]);
+						ctx_copy.strokeStyle=sendColor[i];
+						ctx_copy.lineWidth=sendSize[i];
+						ctx_copy.closePath();
+						ctx_copy.stroke();
+					}
+					
+				}
+
+				// touch event
+				c.addEventListener("touchstart",doTouchStart,false);
+				c.addEventListener("touchmove",doTouchMove,false);
+				c.addEventListener("touchend",doTouchEnd,false);
+				c.addEventListener("touchcancel",doTouchCancel,false);
+
+				//var touchX = new Array();
+				//var touchY = new Array();
+				//var touchMove = new Array();
+				var isTouchPainting;
+
+				function doTouchStart(event){
+					event.preventDefault();
+					var touchX = event.touches[0].pageX - event.touches[0].target.offsetLeft;
+					var touchY = event.touches[0].pageY - event.touches[0].target.offsetTop;
+					//var touchX = event.changedTouches[0].pageX;
+					//var touchY = event.changedTouches[0].pageY;
+					//var touchX = event.targetTouches[0].pageX;
+					//var touchY = event.targetTouches[0].pageY;
+					$("#touchX").text(touchX);
+					$("#touchY").text(touchY);
+					addTouch(touchX, touchY, false, color, size);
+					isTouchPainting=true;
+					touch_draw();
+					//ctx.moveTo(touchX, touchY);
+				}
+
+				function doTouchMove(event){
+					event.preventDefault();
+					if(isTouchPainting){
+						var touchX = event.touches[0].pageX - event.touches[0].target.offsetLeft;
+						var touchY = event.touches[0].pageY - event.touches[0].target.offsetTop;
+						//var touchX = event.changedTouches[0].pageX;
+						//var touchY = event.changedTouches[0].pageY;
+						//var touchX = event.targetTouches[0].pageX;
+						//var touchY = event.targetTouches[0].pageY;
+						$("#touchX").text(touchX);
+						$("#touchY").text(touchY);
+						addTouch(touchX, touchY, true, color, size);
+						touch_draw();
+						//ctx.lineTo(touchX, touchY);
+						//ctx.stroke();
+					}
+				}
+
+				function doTouchEnd(event){
+					event.preventDefault();
+					isTouchPainting=false;
+				}
+
+				function doTouchCancel(event){
+					event.preventDefault();
+					isTouchPainting=false;
+				}
+
+				function addTouch(x, y, dragging, color, size){
+					clickX.push(x);
+					clickY.push(y);
+					clickDrag.push(dragging);
+					clickColor.push(color);
+					clickSize.push(size);
+
+					//send to server
+					sendMsg(x,y,dragging,color,size);
+				}
+
+				function sendMsg(x,y,dragging,color,size){
+					var data = { "x" : x, "y" : y, "dragging" : dragging, "color" : color, "size" : size };
+					
+					//TODO: change copy() to my_copy() and server_copy()
+						sendX.push(x);
+						sendY.push(y);
+						sendDrag.push(dragging);
+						sendColor.push(color);
+						sendSize.push(size);
+						copy();
+					
+					var json = JSON.stringify(data);
+					socket.emit( mouseInfo , json );
+				}
+
+				function touch_draw(){
+						for(var i=0; i < clickX.length; i++)
+						{
+							ctx.beginPath();
+							if(clickDrag[i] && i){
+								ctx.moveTo(clickX[i-1], clickY[i-1]);
+							}else{
+								ctx.moveTo(clickX[i]-1, clickY[i]);
+							}
+							ctx.lineTo(clickX[i], clickY[i]);
+							ctx.strokeStyle=clickColor[i];
+							ctx.lineWidth=clickSize[i];
+							ctx.closePath();
+							ctx.stroke();
+						}
+					}
+
+				
+				//jquery click event		
+				
+
+					$("#paint").mousedown(function(e){
+						var mouseX = e.pageX - this.offsetLeft;
+						var mouseY = e.pageY - this.offsetTop;
+						$("#mouseX").text(mouseX);
+						$("#mouseY").text(mouseY);
+						isPainting = true;
+						addClick(mouseX, mouseY, false, color, size);
+						draw();
+						//ctx.moveTo(mouseX, mouseY);
+						//copy();
+					});
+
+					$("#paint").mousemove(function(e){
+						if(isPainting){
+							var mouseX = e.pageX - this.offsetLeft;
+							var mouseY = e.pageY - this.offsetTop;
+							$("#mouseX").text(mouseX);
+							$("#mouseY").text(mouseY);
+							addClick(mouseX, mouseY, true, color, size);
+							draw();
+							ctx.lineTo(mouseX, mouseY);
+							//ctx.strokeStyle=color;
+							//ctx.stroke();
+							//copy();
+						}
+					});
+
+					$("#paint").mouseup(function(e){
+						isPainting = false;
+					});
+
+					$("#paint").mouseleave(function(e){
+						isPainting = false;
+					});
+
+					function addClick(x, y, dragging, color, size){
+						clickX.push(x);
+						clickY.push(y);
+						clickDrag.push(dragging);
+						clickColor.push(color);
+						clickSize.push(size);
+						//send to server 
+						sendMsg(x,y,dragging, color, size);
+					}
+
+					function draw(){
+						for(var i=0; i < clickX.length; i++)
+						{
+							ctx.beginPath();
+							if(clickDrag[i] && i){
+								ctx.moveTo(clickX[i-1], clickY[i-1]);
+							}else{
+								ctx.moveTo(clickX[i]-1, clickY[i]);
+							}
+							ctx.lineTo(clickX[i], clickY[i]);
+							ctx.strokeStyle=clickColor[i];
+							ctx.lineWidth=clickSize[i];
+							ctx.closePath();
+							ctx.stroke();
+						}
+					}
+
+					//send to server 
+					function sendMsg(x,y,dragging,color,size){
+						var data = { "x" : x, "y" : y, "dragging" : dragging, "color" : color, "size" : size };
+						
+						//TODO: change copy() to my_copy() and server_copy()
+						sendX.push(x);
+						sendY.push(y);
+						sendDrag.push(dragging);
+						sendColor.push(color);
+						sendSize.push(size);
+						copy();
+						
+						var json = JSON.stringify(data);
+						socket.emit( 'mouseInfo', json );
+					}
+
+					//erase my canvas
+					$("#my_eraser").click(function(e){
+						//alert("my");
+						//c.width=c.width;
+						ctx.clearRect(0, 0, c.width, c.height);
+						clickX = [];
+						clickY = [];
+						clickDrag = [];
+						clickColor = [];
+						clickSize = [];
+						//ctx.strokeStyle="#0000ff";
+						//ctx.lineWidth=5;
+					});
+
+
+					//erase share canvas
+					$("#share_eraser").click(function(e){
+						alert("share");
+						//c_copy.width=c_copy.width;
+						//ctx_copy.strokeStyle="#0000ff";
+						//ctx_copy.lineWidth=5;
+					});
+
+/*
+					//jquery  touch event
+					$("#paint").bind("touchstart", function (event) {
+						var e = event.originalEvent;
+						var touchX = e.targetTouches[0].pageX;
+						var touchY = e.targetTouches[0].pageY;
+						$("#touchX").text(touchX);
+						$("#touchY").text(touchY);
+					});
+
+					$("#paint").bind("touchmove", function (event) {
+						var e = event.originalEvent;
+						var touchX = e.targetTouches[0].pageX;
+						var touchY = e.targetTouches[0].pageY;
+						$("#touchX").text(touchX);
+						$("#touchY").text(touchY);
+					});
+
+					$("#paint").bind("touchend", function (event) {
+						var e = event.originalEvent;
+						var touchX = e.targetTouches[0].pageX;
+						var touchY = e.targetTouches[0].pageY;
+						$("#touchX").text(touchX);
+						$("#touchY").text(touchY);
+					});
+*/
+					//select color
+					$( "#input_color" ).change(function (event) {
+						color=this.value;
+						//alert(color);
+					});
+
+
+					//select size
+					$( "#input_size" ).change(function (event) {
+						size=this.value;
+						$( "#input_size_value" ).val(size);
+						//alert(size);
+					});
+				
+				
+				
+				
+			
+			});
+			
+            
+        </script>
+    </head>
+    
+    <body>
+
+		<div id="select_color">
+			select color:
+			<input id="input_color" type="color" />
+		</div>
+		<div id="select_size">
+			select size:
+			<input id="input_size" type="range" min="1" max="10" value="5" />
+			<input id="input_size_value" value="5" >
+		</div>
+        <div id="mouseInfo">
+            mouse X: <label id="mouseX"></label>
+            <br/>
+            mouse Y: <label id="mouseY"></label>
+			<br/>
+			touch X: <label id="touchX"></label>
+            <br/>
+            touch Y: <label id="touchY"></label>
+        </div>
+
+		my canvas:
+		<input id="my_eraser" type=button value="my eraser">
+        <div id="canvasDiv">
+            <canvas id="paint" style="border:1px solid #d3d3d3;width:100%;height:320px">
+                Your browser does not support the canvas element.
+            </canvas>
+			
+        </div>
+
+		share canvas:
+		<input id="share_eraser" type=button value="share eraser">
+		<div>
+			<canvas id="copy" style="border:1px solid #d3d3d3;width:100%;height:320px">
+			</canvas>
+		</div>
+        
+    </body>
+</html>
